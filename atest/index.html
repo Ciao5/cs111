@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>棋牌对弈 · 五子棋 / 中国象棋</title>
+<style>
+  :root{
+    --bg:#f5f2ec;
+    --card:#ffffff;
+    --line:#e6e0d6;
+    --ink:#2f2a24;
+    --sub:#8a8175;
+    --accent:#8b5e34;
+    --red:#c0392b;
+    --shadow:0 8px 28px rgba(80,60,40,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg);color:var(--ink);
+    font-family:"PingFang SC","Microsoft YaHei","Hiragino Sans GB",system-ui,sans-serif;
+    min-height:100vh;padding:24px 16px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .hidden{display:none !important}
+  .app{width:100%;max-width:960px;margin:0 auto}
+
+  /* ---------- 首页 ---------- */
+  .home{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:78vh;text-align:center}
+  .home h1{font-size:28px;letter-spacing:8px;font-weight:600}
+  .home .lead{color:var(--sub);font-size:13px;margin:10px 0 34px;letter-spacing:2px}
+  .picks{display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
+  .pick{
+    width:230px;background:var(--card);border-radius:20px;padding:30px 22px;cursor:pointer;
+    box-shadow:var(--shadow);border:1px solid transparent;transition:.22s;
+  }
+  .pick:hover{transform:translateY(-4px);border-color:#e0d3bf;box-shadow:0 14px 34px rgba(80,60,40,.16)}
+  .pick .ico{
+    width:78px;height:78px;margin:0 auto 18px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:600;
+  }
+  .pick .ico.gomoku{
+    background:radial-gradient(circle at 34% 32%,#faf6ef,#e7e0d3);
+    box-shadow:inset 0 0 0 1px #ddd4c4;
+    position:relative;
+  }
+  .pick .ico.gomoku i{position:absolute;width:24px;height:24px;border-radius:50%;display:block}
+  .pick .ico.gomoku i.b{left:14px;top:26px;background:radial-gradient(circle at 34% 32%,#666,#000)}
+  .pick .ico.gomoku i.w{right:14px;top:26px;background:radial-gradient(circle at 34% 32%,#fff,#cfc9c0);box-shadow:0 0 0 1px #ddd}
+  .pick .ico.xiangqi{
+    background:radial-gradient(circle at 34% 32%,#fdf3e3,#efd9b4);color:#8b2f22;
+    box-shadow:inset 0 0 0 2px #d8bd90, 0 3px 8px rgba(0,0,0,.08);
+    font-family:"KaiTi","STKaiti","Microsoft YaHei",serif;
+  }
+  .pick .ico.checkers{
+    background:radial-gradient(circle at 34% 32%,#faf6ef,#e7e0d3);
+    box-shadow:inset 0 0 0 1px #ddd4c4;position:relative;
+  }
+  .pick .ico.checkers i{position:absolute;width:23px;height:23px;border-radius:50%;display:block}
+  .pick .ico.checkers i.r{left:13px;top:24px;background:radial-gradient(circle at 34% 32%,#ff9585,#c0392b)}
+  .pick .ico.checkers i.u{right:13px;top:24px;background:radial-gradient(circle at 34% 32%,#9bc6ff,#2a5db0)}
+  .pick .ico.checkers i.m{left:50%;top:14px;margin-left:-9px;width:18px;height:18px;
+    background:radial-gradient(circle at 34% 32%,#fff,#cfc9c0);box-shadow:0 0 0 1px #ddd}
+  .pick h2{font-size:19px;letter-spacing:3px;font-weight:600}
+  .pick p{color:var(--sub);font-size:12.5px;margin-top:8px;letter-spacing:1px}
+  .pick .tags{margin-top:16px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+  .pick .tags span{font-size:11px;color:var(--accent);background:#f6ece0;border-radius:20px;padding:3px 10px}
+
+  /* ---------- 游戏页 ---------- */
+  header{position:relative;text-align:center;margin-bottom:20px}
+  header h1{font-size:24px;letter-spacing:6px;font-weight:600}
+  header p{color:var(--sub);font-size:12.5px;margin-top:6px;letter-spacing:1px}
+  .back{
+    position:absolute;left:0;top:2px;border:1px solid var(--line);background:#fff;color:var(--sub);
+    padding:6px 14px;border-radius:20px;font-size:12px;cursor:pointer;font-family:inherit;transition:.18s;
+  }
+  .back:hover{border-color:var(--accent);color:var(--accent)}
+
+  .layout{display:flex;gap:22px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+  .layout>*{min-width:0}
+  .board-card{position:relative;background:var(--card);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+  canvas{display:block;border-radius:10px;touch-action:manipulation;max-width:100%;height:auto}
+  #cGomoku{cursor:pointer}
+  #cXiangqi{cursor:pointer}
+
+  .overlay{
+    position:absolute;inset:14px;border-radius:10px;background:rgba(255,255,255,.88);backdrop-filter:blur(3px);
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;animation:fade .25s ease;
+  }
+  .overlay.show{display:flex}
+  .overlay .result{font-size:26px;font-weight:600;letter-spacing:2px;text-align:center}
+  .overlay .result small{display:block;font-size:13px;color:var(--sub);font-weight:400;margin-top:8px;letter-spacing:1px}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+
+  .panel{width:262px;background:var(--card);border-radius:18px;padding:20px;box-shadow:var(--shadow)}
+  .group{margin-bottom:16px}
+  .group:last-child{margin-bottom:0}
+  .label{font-size:12px;color:var(--sub);letter-spacing:1px;margin-bottom:8px}
+  .seg{display:flex;background:#f3efe8;border-radius:10px;padding:3px;gap:3px}
+  .seg button{
+    flex:1;border:0;background:transparent;padding:8px 4px;border-radius:8px;font-size:13px;
+    color:var(--sub);cursor:pointer;font-family:inherit;transition:.18s;
+  }
+  .seg button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.07)}
+  .seg.three button{font-size:12px}
+  .turn{display:flex;align-items:center;gap:10px;padding:12px;background:#faf7f2;border-radius:12px}
+  .dot{width:22px;height:22px;border-radius:50%;flex:none;border:1px solid #ddd}
+  .dot.b{background:radial-gradient(circle at 34% 32%,#5a5a5a,#0a0a0a)}
+  .dot.w{background:radial-gradient(circle at 34% 32%,#fff,#cfc9c0)}
+  .dot.r{background:radial-gradient(circle at 34% 32%,#ffe6dd,#c0392b);border-color:#e5b6ac}
+  .dot.k{background:radial-gradient(circle at 34% 32%,#6a6a6a,#111);border-color:#999}
+  .dot.u{background:radial-gradient(circle at 34% 32%,#dbe9ff,#2a5db0);border-color:#b3cdf0}
+  .turn .txt{font-size:14px}
+  .turn .txt span{color:var(--sub);font-size:12px;display:block;margin-top:2px}
+  .turn .txt b{color:var(--red);font-weight:600}
+  .score{display:flex;align-items:center;justify-content:space-around;padding:10px 0}
+  .score .col{text-align:center}
+  .score .num{font-size:24px;font-weight:600;line-height:1}
+  .score .cap{font-size:12px;color:var(--sub);margin-top:6px}
+  .score .vs{color:#ddd;font-size:18px}
+  .btns{display:flex;gap:10px}
+  .btn{
+    flex:1;border:1px solid var(--line);background:#fff;color:var(--ink);padding:10px 0;border-radius:10px;
+    font-size:13px;cursor:pointer;font-family:inherit;transition:.18s;
+  }
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:#75502c;color:#fff}
+  .tip{font-size:12px;color:var(--sub);line-height:1.7;background:#faf7f2;border-radius:10px;padding:10px 12px}
+
+  /* 象棋面板附加 */
+  .caps{display:flex;gap:8px;align-items:center}
+  .caps .row{flex:1;background:#faf7f2;border-radius:10px;padding:8px;min-height:38px}
+  .caps .row .t{font-size:11px;color:var(--sub);margin-bottom:4px}
+  .caps .chips{display:flex;flex-wrap:wrap;gap:3px}
+  .chip{
+    width:20px;height:20px;border-radius:50%;font-size:12px;line-height:19px;text-align:center;
+    background:#fff;box-shadow:0 0 0 1px #e2d9c9;font-family:"KaiTi","STKaiti",serif;
+  }
+  .chip.r{color:#c0392b}
+  .chip.k{color:#222}
+  .log{
+    height:132px;overflow-y:auto;background:#faf7f2;border-radius:10px;padding:8px 10px;
+    font-size:12px;line-height:1.9;color:#5f5647;font-family:"KaiTi","STKaiti","Microsoft YaHei",serif;
+  }
+  .log div{display:flex;gap:8px}
+  .log .no{color:#b8ae9e;width:26px;text-align:right;flex:none}
+
+  /* 跳棋座位 / 进度 */
+  .seat{
+    display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;
+    font-size:12.5px;cursor:pointer;transition:.15s;border:1px solid transparent;
+  }
+  .seat:hover{background:#faf7f2}
+  .seat.cur{border-color:#e3d5bd;background:#fdf9f3}
+  .seat .sw{width:13px;height:13px;border-radius:50%;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+  .seat .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .seat .ty{font-size:11px;color:var(--sub);background:#f3efe8;border-radius:12px;padding:2px 9px}
+  .seat .ty.me{background:var(--accent);color:#fff}
+  .prog{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 8px}
+  .prog .sw{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+  .prog .nm{flex:1;color:var(--sub)}
+  .prog .v{font-weight:600}
+
+  @media(max-width:780px){
+    .layout{flex-direction:column;align-items:center}
+    .panel{width:100%;max-width:520px}
+    .back{position:static;margin-bottom:12px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ 首页 ============ -->
+<div class="app" id="scr-home">
+  <div class="home">
+    <h1>棋 牌 对 弈</h1>
+    <p class="lead">选择一款棋类开始对局</p>
+    <div class="picks">
+      <div class="pick" id="pick-gomoku">
+        <div class="ico gomoku"><i class="b"></i><i class="w"></i></div>
+        <h2>五子棋</h2>
+        <p>横竖斜先连成五子即胜</p>
+        <div class="tags"><span>双人对战</span><span>人机对战</span></div>
+      </div>
+      <div class="pick" id="pick-xiangqi">
+        <div class="ico xiangqi">帥</div>
+        <h2>中国象棋</h2>
+        <p>将死对方主帅者为胜</p>
+        <div class="tags"><span>双人对战</span><span>人机对战</span></div>
+      </div>
+      <div class="pick" id="pick-checkers">
+        <div class="ico checkers"><i class="m"></i><i class="r"></i><i class="u"></i></div>
+        <h2>中国跳棋</h2>
+        <p>单步或连跳，先占满对角为胜</p>
+        <div class="tags"><span>2/3/4/6 人</span><span>人机混战</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 五子棋 ============ -->
+<div class="app hidden" id="scr-gomoku">
+  <header>
+    <button class="back" data-back>← 返回</button>
+    <h1>五 子 棋</h1>
+    <p>黑白对弈 · 先连五者胜</p>
+  </header>
+  <div class="layout">
+    <div class="board-card">
+      <canvas id="cGomoku"></canvas>
+      <div class="overlay" id="ovGomoku">
+        <div class="result" id="resGomoku">黑棋胜利</div>
+        <button class="btn primary" id="againGomoku" style="flex:none;padding:10px 28px">再来一局</button>
+      </div>
+    </div>
+    <aside class="panel">
+      <div class="group">
+        <div class="label">对战模式</div>
+        <div class="seg" id="gModeSeg">
+          <button data-v="pvp" class="on">双人对战</button>
+          <button data-v="pve">人机对战</button>
+        </div>
+      </div>
+      <div class="group" id="gLevelGroup">
+        <div class="label">电脑棋力</div>
+        <div class="seg three" id="gLevelSeg">
+          <button data-v="easy">简单</button>
+          <button data-v="normal" class="on">普通</button>
+          <button data-v="hard">困难</button>
+        </div>
+      </div>
+      <div class="group" id="gSideGroup">
+        <div class="label">我执</div>
+        <div class="seg" id="gSideSeg">
+          <button data-v="1" class="on">黑棋（先手）</button>
+          <button data-v="2">白棋（后手）</button>
+        </div>
+      </div>
+      <div class="group">
+        <div class="label">当前棋局</div>
+        <div class="turn">
+          <div class="dot b" id="gTurnDot"></div>
+          <div class="txt" id="gTurnTxt">黑棋落子<span>第 1 手</span></div>
+        </div>
+      </div>
+      <div class="group">
+        <div class="score">
+          <div class="col"><div class="num" id="gBlackScore">0</div><div class="cap">黑胜</div></div>
+          <div class="vs">:</div>
+          <div class="col"><div class="num" id="gWhiteScore">0</div><div class="cap">白胜</div></div>
+        </div>
+      </div>
+      <div class="group btns">
+        <button class="btn" id="gUndo">悔棋</button>
+        <button class="btn" id="gReset">重新开始</button>
+      </div>
+      <div class="group"><div class="tip" id="gTip">黑棋先行，点击交叉点落子。</div></div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============ 中国象棋 ============ -->
+<div class="app hidden" id="scr-xiangqi">
+  <header>
+    <button class="back" data-back>← 返回</button>
+    <h1>中 国 象 棋</h1>
+    <p>红先黑后 · 将死对方为胜</p>
+  </header>
+  <div class="layout">
+    <div class="board-card">
+      <canvas id="cXiangqi"></canvas>
+      <div class="overlay" id="ovXQ">
+        <div class="result" id="resXQ">红方胜利</div>
+        <button class="btn primary" id="againXQ" style="flex:none;padding:10px 28px">再来一局</button>
+      </div>
+    </div>
+    <aside class="panel">
+      <div class="group">
+        <div class="label">对战模式</div>
+        <div class="seg" id="xModeSeg">
+          <button data-v="pvp" class="on">双人对战</button>
+          <button data-v="pve">人机对战</button>
+        </div>
+      </div>
+      <div class="group" id="xLevelGroup">
+        <div class="label">电脑棋力</div>
+        <div class="seg three" id="xLevelSeg">
+          <button data-v="easy">简单</button>
+          <button data-v="normal" class="on">普通</button>
+          <button data-v="hard">困难</button>
+        </div>
+      </div>
+      <div class="group" id="xSideGroup">
+        <div class="label">我执</div>
+        <div class="seg" id="xSideSeg">
+          <button data-v="r" class="on">红棋（先手）</button>
+          <button data-v="b">黑棋（后手）</button>
+        </div>
+      </div>
+      <div class="group">
+        <div class="label">当前行棋</div>
+        <div class="turn">
+          <div class="dot r" id="xTurnDot"></div>
+          <div class="txt" id="xTurnTxt">红方走棋<span>第 1 回合</span></div>
+        </div>
+      </div>
+      <div class="group">
+        <div class="label">被吃棋子</div>
+        <div class="caps">
+          <div class="row"><div class="t">红方战损</div><div class="chips" id="xCapR"></div></div>
+          <div class="row"><div class="t">黑方战损</div><div class="chips" id="xCapB"></div></div>
+        </div>
+      </div>
+      <div class="group">
+        <div class="label">棋谱</div>
+        <div class="log" id="xLog"></div>
+      </div>
+      <div class="group btns">
+        <button class="btn" id="xUndo">悔棋</button>
+        <button class="btn" id="xReset">重新开始</button>
+      </div>
+      <div class="group"><div class="tip" id="xTip">点击己方棋子选中，再点击目标位置落子。</div></div>
+    </aside>
+  </div>
+</div>
+
+<!-- ============ 中国跳棋 ============ -->
+<div class="app hidden" id="scr-checkers">
+  <header>
+    <button class="back" data-back>← 返回</button>
+    <h1>中 国 跳 棋</h1>
+    <p>单步或连跳 · 2 / 3 / 4 / 6 人 · 先填满对角阵营者胜</p>
+  </header>
+  <div class="layout">
+    <div class="board-card">
+      <canvas id="cCheckers"></canvas>
+      <div class="overlay" id="ovCK">
+        <div class="result" id="resCK">红方胜利</div>
+        <button class="btn primary" id="againCK" style="flex:none;padding:10px 28px">再来一局</button>
+      </div>
+    </div>
+    <aside class="panel">
+      <div class="group">
+        <div class="label">对战人数</div>
+        <div class="seg" id="kNumSeg">
+          <button data-v="2" class="on">2 人</button>
+          <button data-v="3">3 人</button>
+          <button data-v="4">4 人</button>
+          <button data-v="6">6 人</button>
+        </div>
+      </div>
+      <div class="group">
+        <div class="label">座位安排（点击切换 玩家 / 电脑）</div>
+        <div id="kSeats"></div>
+      </div>
+      <div class="group">
+        <div class="label">电脑棋力</div>
+        <div class="seg three" id="kLevelSeg">
+          <button data-v="easy">简单</button>
+          <button data-v="normal" class="on">普通</button>
+          <button data-v="hard">困难</button>
+        </div>
+      </div>
+      <div class="group">
+        <div class="label">当前行棋</div>
+        <div class="turn">
+          <div class="dot r" id="kTurnDot"></div>
+          <div class="txt" id="kTurnTxt">红方走棋<span>第 1 手</span></div>
+        </div>
+      </div>
+      <div class="group">
+        <div class="label">入位进度</div>
+        <div id="kProg"></div>
+      </div>
+      <div class="group btns">
+        <button class="btn" id="kUndo">悔棋</button>
+        <button class="btn" id="kReset">重新开始</button>
+      </div>
+      <div class="group"><div class="tip" id="kTip">点击己方棋子选中，绿点处可直接落子或连跳到达。</div></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   通用：页面切换 / 音效
+   ========================================================= */
+(function(){
+  const screens = {
+    home: document.getElementById('scr-home'),
+    gomoku: document.getElementById('scr-gomoku'),
+    xiangqi: document.getElementById('scr-xiangqi'),
+    checkers: document.getElementById('scr-checkers')
+  };
+  function show(name){
+    Object.keys(screens).forEach(k => screens[k].classList.toggle('hidden', k !== name));
+    window.scrollTo(0, 0);
+  }
+  document.getElementById('pick-gomoku').addEventListener('click', () => { show('gomoku'); GOMOKU.enter(); });
+  document.getElementById('pick-xiangqi').addEventListener('click', () => { show('xiangqi'); XIANGQI.enter(); });
+  document.getElementById('pick-checkers').addEventListener('click', () => { show('checkers'); CHECKERS.enter(); });
+  document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => show('home')));
+
+  let actx = null;
+  window.BEEP = function(freq, dur, type){
+    try{
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'triangle';
+      o.frequency.value = freq || 280;
+      g.gain.setValueAtTime(0.11, actx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0008, actx.currentTime + (dur || 0.12));
+      o.connect(g).connect(actx.destination);
+      o.start(); o.stop(actx.currentTime + (dur || 0.12));
+    }catch(e){}
+  };
+  window.segBind = function(id, cb){
+    document.getElementById(id).addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      [...b.parentNode.children].forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      cb(b.dataset.v);
+    });
+  };
+})();
+
+/* =========================================================
+   五子棋
+   ========================================================= */
+var GOMOKU = (function(){
+  "use strict";
+  const N = 15, EMPTY = 0, BLACK = 1, WHITE = 2;
+  const PAD = 32, CELL = 36, R = CELL * 0.44;
+  const SPAN = PAD * 2 + CELL * (N - 1);
+  const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
+
+  const canvas = document.getElementById('cGomoku');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = SPAN * dpr; canvas.height = SPAN * dpr;
+  canvas.style.width = SPAN + 'px'; canvas.style.height = SPAN + 'px';
+  ctx.scale(dpr, dpr);
+
+  const S = {
+    mode:'pvp', level:'normal', human:BLACK,
+    board:[], history:[], turn:BLACK, over:false, thinking:false,
+    winLine:null, last:null, hover:null, score:{1:0, 2:0}, ready:false
+  };
+  const inside = (i,j) => i >= 0 && i < N && j >= 0 && j < N;
+
+  function reset(keepScore){
+    S.board = Array.from({length:N}, () => new Array(N).fill(EMPTY));
+    S.history = []; S.turn = BLACK; S.over = false; S.thinking = false;
+    S.winLine = null; S.last = null; S.hover = null;
+    if(!keepScore) S.score = {1:0, 2:0};
+    document.getElementById('ovGomoku').classList.remove('show');
+    sync(); draw();
+    if(S.mode === 'pve' && S.human === WHITE) setTimeout(() => aiMove(), 420);
+  }
+
+  function place(i, j, color){
+    S.board[i][j] = color;
+    S.history.push({i, j, color});
+    S.last = {i, j};
+    window.BEEP(250 + Math.random()*60, 0.12);
+    const win = checkWin(i, j, color);
+    if(win){
+      S.over = true; S.winLine = win; S.score[color]++; showResult(color);
+    } else if(S.history.length === N*N){
+      S.over = true; showResult(0);
+    } else {
+      S.turn = 3 - color;
+    }
+    draw();
+  }
+
+  function checkWin(i, j, color){
+    for(const [dx, dy] of DIRS){
+      const line = [[i,j]];
+      for(const s of [1,-1]){
+        let x = i + dx*s, y = j + dy*s;
+        while(inside(x,y) && S.board[x][y] === color){ line.push([x,y]); x += dx*s; y += dy*s; }
+      }
+      if(line.length >= 5){
+        line.sort((a,b) => (a[0]-b[0]) || (a[1]-b[1]));
+        return [line[0], line[line.length-1]];
+      }
+    }
+    return null;
+  }
+
+  function showResult(color){
+    const el = document.getElementById('resGomoku');
+    if(color === 0){
+      el.innerHTML = '和 棋<small>棋盘已满，势均力敌</small>';
+    } else {
+      const who = color === BLACK ? '黑 棋 胜 利' : '白 棋 胜 利';
+      const extra = S.mode === 'pve' ? (color === S.human ? '恭喜，你赢了' : '电脑赢了，再来一局') : '五子连珠';
+      el.innerHTML = who + '<small>' + extra + '</small>';
+    }
+    document.getElementById('ovGomoku').classList.add('show');
+    sync();
+  }
+
+  /* ---- AI ---- */
+  function scan(i, j, dx, dy, color, allowGap){
+    let len = 1, blocked = 0, usedGap = false;
+    for(const s of [1,-1]){
+      let x = i + dx*s, y = j + dy*s;
+      for(;;){
+        if(!inside(x,y)){ blocked++; break; }
+        const v = S.board[x][y];
+        if(v === color){ len++; x += dx*s; y += dy*s; continue; }
+        if(v === EMPTY){
+          if(allowGap && !usedGap){
+            const nx = x + dx*s, ny = y + dy*s;
+            if(inside(nx,ny) && S.board[nx][ny] === color){ usedGap = true; len++; x = nx; y = ny; continue; }
+          }
+          break;
+        }
+        blocked++; break;
+      }
+    }
+    return {len, blocked};
+  }
+  function shapeScore(len, blocked){
+    if(len >= 5) return 1000000;
+    if(len === 4) return blocked === 0 ? 100000 : (blocked === 1 ? 12000 : 0);
+    if(len === 3) return blocked === 0 ? 9000 : (blocked === 1 ? 1200 : 0);
+    if(len === 2) return blocked === 0 ? 900 : (blocked === 1 ? 120 : 0);
+    return blocked === 0 ? 90 : (blocked === 1 ? 12 : 0);
+  }
+  function evalPoint(i, j, color){
+    let total = 0;
+    for(const [dx, dy] of DIRS){
+      const a = scan(i,j,dx,dy,color,false);
+      const b = scan(i,j,dx,dy,color,true);
+      total += Math.max(shapeScore(a.len,a.blocked), shapeScore(b.len,b.blocked)*0.9);
+    }
+    return total;
+  }
+  function candidates(){
+    if(!S.history.length) return [[7,7]];
+    const out = [];
+    for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+      if(S.board[i][j] !== EMPTY) continue;
+      let near = false;
+      for(let a=-2;a<=2 && !near;a++) for(let b=-2;b<=2;b++)
+        if(inside(i+a,j+b) && S.board[i+a][j+b] !== EMPTY){ near = true; break; }
+      if(near) out.push([i,j]);
+    }
+    return out.length ? out : [[7,7]];
+  }
+  function aiMove(){
+    if(S.over) return;
+    const me = 3 - S.human, foe = S.human, lv = S.level;
+    const weight = lv === 'easy' ? 0.55 : (lv === 'hard' ? 1.05 : 0.9);
+    const noise = lv === 'easy' ? 260 : (lv === 'hard' ? 0 : 40);
+    const scored = [];
+    for(const [i,j] of candidates()){
+      const center = 12 - (Math.abs(i-7) + Math.abs(j-7));
+      S.board[i][j] = me;  const atk = evalPoint(i,j,me);
+      S.board[i][j] = foe; const def = evalPoint(i,j,foe);
+      S.board[i][j] = EMPTY;
+      let v = atk + def*weight + center + Math.random()*noise;
+      if(atk >= 1000000) v = 1e9;
+      if(def >= 1000000) v = Math.max(v, 9e8);
+      if(lv === 'hard' && def >= 100000) v = Math.max(v, 5e8);
+      if(lv === 'hard' && atk >= 100000) v = 1e9;
+      scored.push({i, j, v});
+    }
+    scored.sort((a,b) => b.v - a.v);
+    let pick = scored[0];
+    if(lv === 'easy' && scored.length > 2 && Math.random() < 0.3) pick = scored[1];
+    place(pick.i, pick.j, me);
+  }
+
+  /* ---- 绘制 ---- */
+  function draw(){
+    const g = ctx.createLinearGradient(0,0,SPAN,SPAN);
+    g.addColorStop(0,'#f7dfae'); g.addColorStop(.5,'#edcb92'); g.addColorStop(1,'#e3bd7c');
+    ctx.fillStyle = g; ctx.fillRect(0,0,SPAN,SPAN);
+    ctx.strokeStyle = 'rgba(90,58,25,.65)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let k=0;k<N;k++){
+      const p = PAD + k*CELL;
+      ctx.moveTo(PAD, p); ctx.lineTo(PAD + CELL*(N-1), p);
+      ctx.moveTo(p, PAD); ctx.lineTo(p, PAD + CELL*(N-1));
+    }
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(90,58,25,.85)'; ctx.lineWidth = 2;
+    ctx.strokeRect(PAD, PAD, CELL*(N-1), CELL*(N-1));
+    ctx.fillStyle = 'rgba(70,45,18,.85)';
+    for(const [i,j] of [[3,3],[3,11],[11,3],[11,11],[7,7]]){
+      ctx.beginPath(); ctx.arc(PAD + j*CELL, PAD + i*CELL, 3.2, 0, Math.PI*2); ctx.fill();
+    }
+    if(S.hover && !S.over && !S.thinking && S.board[S.hover[0]][S.hover[1]] === EMPTY){
+      const [hi,hj] = S.hover;
+      const ok = !(S.mode === 'pve' && S.turn !== S.human);
+      ctx.globalAlpha = ok ? 0.4 : 0.15;
+      stone(hj, hi, S.turn);
+      ctx.globalAlpha = 1;
+    }
+    for(let i=0;i<N;i++) for(let j=0;j<N;j++) if(S.board[i][j] !== EMPTY) stone(j, i, S.board[i][j]);
+    if(S.last){
+      const {i,j} = S.last;
+      ctx.strokeStyle = S.board[i][j] === BLACK ? '#fff' : '#333';
+      ctx.lineWidth = 2; ctx.beginPath();
+      ctx.arc(PAD + j*CELL, PAD + i*CELL, R*0.42, 0, Math.PI*2); ctx.stroke();
+    }
+    if(S.winLine){
+      const [[i1,j1],[i2,j2]] = S.winLine;
+      ctx.strokeStyle = 'rgba(214,48,49,.9)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(PAD + j1*CELL, PAD + i1*CELL); ctx.lineTo(PAD + j2*CELL, PAD + i2*CELL); ctx.stroke();
+    }
+  }
+  function stone(px, py, color){
+    const x = PAD + px*CELL, y = PAD + py*CELL;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI*2);
+    ctx.shadowColor = 'rgba(0,0,0,.28)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+    const g = ctx.createRadialGradient(x - R*.32, y - R*.34, R*.12, x, y, R);
+    if(color === BLACK){ g.addColorStop(0,'#6b6b6b'); g.addColorStop(.55,'#222'); g.addColorStop(1,'#000'); }
+    else { g.addColorStop(0,'#fff'); g.addColorStop(.6,'#f4f1ec'); g.addColorStop(1,'#c9c3b9'); }
+    ctx.fillStyle = g; ctx.fill();
+    ctx.restore();
+  }
+
+  function sync(){
+    document.getElementById('gTurnDot').className = 'dot ' + (S.turn === BLACK ? 'b' : 'w');
+    const n = S.history.length + 1;
+    let main = S.turn === BLACK ? '黑棋落子' : '白棋落子';
+    let sub = '第 ' + n + ' 手';
+    if(S.thinking){ main = '电脑思考中'; sub = '请稍候…'; }
+    else if(S.over){ main = '本局结束'; sub = '共 ' + S.history.length + ' 手'; }
+    else if(S.mode === 'pve') sub += S.turn === S.human ? ' · 你的回合' : ' · 电脑回合';
+    document.getElementById('gTurnTxt').innerHTML = main + '<span>' + sub + '</span>';
+    document.getElementById('gBlackScore').textContent = S.score[1];
+    document.getElementById('gWhiteScore').textContent = S.score[2];
+    document.getElementById('gUndo').disabled = S.history.length === 0 || S.thinking;
+    document.getElementById('gLevelGroup').style.display = S.mode === 'pve' ? '' : 'none';
+    document.getElementById('gSideGroup').style.display = S.mode === 'pve' ? '' : 'none';
+    document.getElementById('gTip').textContent = S.mode === 'pvp'
+      ? '两位玩家轮流落子，黑棋先行。'
+      : '你执' + (S.human === BLACK ? '黑' : '白') + '棋，电脑执' + (S.human === BLACK ? '白' : '黑') + '棋。';
+  }
+
+  /* ---- 交互 ---- */
+  canvas.addEventListener('mousemove', e => {
+    const p = toGrid(e);
+    const ch = (!p && S.hover) || (p && (!S.hover || S.hover[0] !== p[0] || S.hover[1] !== p[1]));
+    if(ch){ S.hover = p; draw(); }
+  });
+  canvas.addEventListener('mouseleave', () => { S.hover = null; draw(); });
+  canvas.addEventListener('click', e => {
+    if(S.over || S.thinking) return;
+    if(S.mode === 'pve' && S.turn !== S.human) return;
+    const p = toGrid(e); if(!p) return;
+    if(S.board[p[0]][p[1]] !== EMPTY) return;
+    place(p[0], p[1], S.turn);
+    if(!S.over && S.mode === 'pve'){
+      S.thinking = true; sync(); draw();
+      setTimeout(() => { aiMove(); S.thinking = false; sync(); draw(); }, 320);
+    }
+    sync();
+  });
+  function toGrid(e){
+    const r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) * (SPAN / r.width);
+    const y = (e.clientY - r.top) * (SPAN / r.height);
+    const j = Math.round((x - PAD)/CELL), i = Math.round((y - PAD)/CELL);
+    if(!inside(i,j)) return null;
+    if(Math.hypot(x - (PAD + j*CELL), y - (PAD + i*CELL)) > CELL*0.48) return null;
+    return [i,j];
+  }
+
+  window.segBind('gModeSeg', v => { S.mode = v; reset(false); });
+  window.segBind('gLevelSeg', v => { S.level = v; });
+  window.segBind('gSideSeg', v => { S.human = +v; reset(false); });
+  document.getElementById('gReset').addEventListener('click', () => reset(true));
+  document.getElementById('againGomoku').addEventListener('click', () => reset(true));
+  document.getElementById('gUndo').addEventListener('click', () => {
+    if(!S.history.length || S.thinking) return;
+    const steps = (S.mode === 'pve' && S.history.length >= 2) ? 2 : 1;
+    for(let k=0;k<steps;k++){
+      const m = S.history.pop();
+      if(m) S.board[m.i][m.j] = EMPTY;
+    }
+    S.over = false; S.winLine = null;
+    S.turn = S.history.length ? 3 - S.history[S.history.length-1].color : BLACK;
+    S.last = S.history.length ? S.history[S.history.length-1] : null;
+    document.getElementById('ovGomoku').classList.remove('show');
+    sync(); draw();
+  });
+
+  return {
+    enter(){
+      if(!S.ready){ reset(false); S.ready = true; }
+      else { sync(); draw(); }
+    },
+    reset(){ reset(false); }
+  };
+})();
+
+/* =========================================================
+   中国象棋
+   ========================================================= */
+var XIANGQI = (function(){
+  "use strict";
+
+  /* ---------- 常量 ---------- */
+  const W = 9, H = 10, CELL = 56, M = 34, PR = 24;
+  const CW = M * 2 + CELL * (W - 1);          // 516
+  const CH = M * 2 + CELL * (H - 1);          // 572
+  const ORTHO = [[1,0],[-1,0],[0,1],[0,-1]];
+  const DIAG  = [[1,1],[1,-1],[-1,1],[-1,-1]];
+  const JUMP  = [[2,2],[2,-2],[-2,2],[-2,-2]];
+  const HORSE = [[1,2],[-1,2],[1,-2],[-1,-2],[2,1],[2,-1],[-2,1],[-2,-1]];
+  const BACK  = ['R','N','B','A','K','A','B','N','R'];
+  const NAME  = {
+    r: {K:'帅', A:'仕', B:'相', N:'马', R:'车', C:'炮', P:'兵'},
+    b: {K:'将', A:'士', B:'象', N:'马', R:'车', C:'砲', P:'卒'}
+  };
+  const VAL = {K:10000, R:900, N:400, C:450, A:200, B:200, P:100};
+  const MATE = 100000, INF = 1e9;
+  const CN = ['一','二','三','四','五','六','七','八','九'];
+  const AR = ['1','2','3','4','5','6','7','8','9'];
+
+  const canvas = document.getElementById('cXiangqi');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = CW * dpr; canvas.height = CH * dpr;
+  canvas.style.width = CW + 'px'; canvas.style.height = CH + 'px';
+  ctx.scale(dpr, dpr);
+
+  const px = x => M + x * CELL;
+  const py = y => M + y * CELL;
+  const inB = (x, y) => x >= 0 && x < W && y >= 0 && y < H;
+  const other = c => c === 'r' ? 'b' : 'r';
+  const at = (x, y) => (inB(x, y) ? X.board[y][x] : null);
+  const palace = (c, x, y) => x >= 3 && x <= 5 && (c === 'r' ? y >= 7 : y <= 2);
+  const ownHalf = (c, y) => c === 'r' ? y >= 5 : y <= 4;
+
+  /* ---------- 状态 ---------- */
+  const X = {
+    board: [], turn: 'r', mode: 'pvp', level: 'normal', human: 'r',
+    sel: null, moves: [], history: [], caps: {r: [], b: []},
+    log: [], over: false, thinking: false, check: false, last: null, ready: false
+  };
+
+  function initBoard(){
+    const b = Array.from({length: H}, () => new Array(W).fill(null));
+    for(let x = 0; x < W; x++){
+      b[0][x] = {t: BACK[x], c: 'b'};
+      b[9][x] = {t: BACK[x], c: 'r'};
+    }
+    b[2][1] = {t:'C', c:'b'}; b[2][7] = {t:'C', c:'b'};
+    b[7][1] = {t:'C', c:'r'}; b[7][7] = {t:'C', c:'r'};
+    for(const x of [0,2,4,6,8]){ b[3][x] = {t:'P', c:'b'}; b[6][x] = {t:'P', c:'r'}; }
+    return b;
+  }
+
+  function reset(){
+    X.board = initBoard();
+    X.turn = 'r'; X.sel = null; X.moves = [];
+    X.history = []; X.caps = {r: [], b: []}; X.log = [];
+    X.over = false; X.thinking = false; X.check = false; X.last = null;
+    document.getElementById('ovXQ').classList.remove('show');
+    sync(); draw();
+    if(X.mode === 'pve' && X.human === 'b') setTimeout(() => aiTurn(), 500);
+  }
+
+  /* ---------- 走法生成 ---------- */
+  function genMoves(color, legalOnly){
+    const moves = [];
+    for(let y = 0; y < H; y++) for(let x = 0; x < W; x++){
+      const p = X.board[y][x];
+      if(!p || p.c !== color) continue;
+      const t = p.t;
+      const push = (tx, ty) => {
+        if(!inB(tx, ty)) return;
+        const q = X.board[ty][tx];
+        if(q && q.c === color) return;
+        moves.push({fx: x, fy: y, tx, ty});
+      };
+
+      if(t === 'K' || t === 'A'){
+        const dirs = t === 'K' ? ORTHO : DIAG;
+        for(const [dx, dy] of dirs){
+          const tx = x + dx, ty = y + dy;
+          if(palace(color, tx, ty)) push(tx, ty);
+        }
+      } else if(t === 'B'){
+        for(const [dx, dy] of JUMP){
+          const tx = x + dx, ty = y + dy;
+          if(!inB(tx, ty) || !ownHalf(color, ty)) continue;
+          if(X.board[y + dy/2][x + dx/2]) continue;      // 象眼
+          push(tx, ty);
+        }
+      } else if(t === 'N'){
+        for(const [dx, dy] of HORSE){
+          const tx = x + dx, ty = y + dy;
+          if(!inB(tx, ty)) continue;
+          const legx = Math.abs(dx) === 2 ? x + dx/2 : x;
+          const legy = Math.abs(dy) === 2 ? y + dy/2 : y;
+          if(X.board[legy][legx]) continue;              // 马腿
+          push(tx, ty);
+        }
+      } else if(t === 'R'){
+        for(const [dx, dy] of ORTHO){
+          let tx = x + dx, ty = y + dy;
+          while(inB(tx, ty) && !X.board[ty][tx]){ push(tx, ty); tx += dx; ty += dy; }
+          if(inB(tx, ty)) push(tx, ty);
+        }
+      } else if(t === 'C'){
+        for(const [dx, dy] of ORTHO){
+          let tx = x + dx, ty = y + dy;
+          while(inB(tx, ty) && !X.board[ty][tx]){ push(tx, ty); tx += dx; ty += dy; }
+          tx += dx; ty += dy;                            // 越过炮架
+          while(inB(tx, ty)){
+            if(X.board[ty][tx]){
+              if(X.board[ty][tx].c !== color) push(tx, ty);
+              break;
+            }
+            tx += dx; ty += dy;
+          }
+        }
+      } else if(t === 'P'){
+        const fwd = color === 'r' ? -1 : 1;
+        push(x, y + fwd);
+        const crossed = color === 'r' ? y <= 4 : y >= 5;
+        if(crossed){ push(x - 1, y); push(x + 1, y); }
+      }
+    }
+    if(!legalOnly) return moves;
+    const out = [];
+    for(const m of moves){
+      const cap = make(m);
+      if(!isChecked(color)) out.push(m);
+      unmake(m, cap);
+    }
+    return out;
+  }
+
+  function make(m){
+    const p = X.board[m.fy][m.fx];
+    const cap = X.board[m.ty][m.tx];
+    X.board[m.fy][m.fx] = null;
+    X.board[m.ty][m.tx] = p;
+    return cap;
+  }
+  function unmake(m, cap){
+    const p = X.board[m.ty][m.tx];
+    X.board[m.ty][m.tx] = cap || null;
+    X.board[m.fy][m.fx] = p;
+  }
+
+  /* ---------- 攻击判定 / 将军 ---------- */
+  function isAttacked(x, y, by){
+    // 车 与 将（含将帅照面）
+    for(const [dx, dy] of ORTHO){
+      let i = x + dx, j = y + dy, screen = null;
+      while(inB(i, j)){
+        const p = X.board[j][i];
+        if(p){
+          if(!screen){
+            if(p.c === by && (p.t === 'R' || p.t === 'K')) return true;
+            screen = p;
+          } else {
+            if(p.c === by && p.t === 'C') return true;
+            break;
+          }
+        }
+        i += dx; j += dy;
+      }
+    }
+    // 马
+    for(const [dx, dy] of HORSE){
+      const mx = x + dx, my = y + dy;
+      if(!inB(mx, my)) continue;
+      const p = X.board[my][mx];
+      if(p && p.c === by && p.t === 'N'){
+        const legx = Math.abs(dx) === 2 ? x + dx/2 : x;
+        const legy = Math.abs(dy) === 2 ? y + dy/2 : y;
+        if(!X.board[legy][legx]) return true;
+      }
+    }
+    // 兵 / 卒
+    if(by === 'r'){
+      const a = at(x, y + 1);
+      if(a && a.c === 'r' && a.t === 'P') return true;
+      if(y <= 4){
+        const l = at(x - 1, y), r2 = at(x + 1, y);
+        if(l && l.c === 'r' && l.t === 'P') return true;
+        if(r2 && r2.c === 'r' && r2.t === 'P') return true;
+      }
+    } else {
+      const a = at(x, y - 1);
+      if(a && a.c === 'b' && a.t === 'P') return true;
+      if(y >= 5){
+        const l = at(x - 1, y), r2 = at(x + 1, y);
+        if(l && l.c === 'b' && l.t === 'P') return true;
+        if(r2 && r2.c === 'b' && r2.t === 'P') return true;
+      }
+    }
+    // 士
+    for(const [dx, dy] of DIAG){
+      const p = at(x + dx, y + dy);
+      if(p && p.c === by && p.t === 'A') return true;
+    }
+    return false;
+  }
+
+  function findKing(color){
+    for(let y = 0; y < H; y++) for(let x = 0; x < W; x++){
+      const p = X.board[y][x];
+      if(p && p.t === 'K' && p.c === color) return {x, y};
+    }
+    return null;
+  }
+  function isChecked(color){
+    const k = findKing(color);
+    return !!k && isAttacked(k.x, k.y, other(color));
+  }
+
+  /* ---------- 局面评估 ---------- */
+  function evaluate(){
+    let s = 0;
+    for(let y = 0; y < H; y++) for(let x = 0; x < W; x++){
+      const p = X.board[y][x];
+      if(!p) continue;
+      let v = VAL[p.t];
+      if(p.t === 'P'){
+        if(p.c === 'r'){ v += (6 - y) * 8; if(y <= 4) v += 45; }
+        else { v += (y - 3) * 8; if(y >= 5) v += 45; }
+      } else if(p.t === 'N'){
+        v += (4 - Math.abs(x - 4)) * 5 - Math.abs(y - 4.5) * 2;
+      } else if(p.t === 'R'){
+        v += (p.c === 'r' ? (9 - y) : y) * 3;
+      } else if(p.t === 'C'){
+        v += (x === 4 ? 12 : 0) + (4 - Math.abs(x - 4)) * 3;
+      }
+      s += p.c === 'r' ? v : -v;
+    }
+    return s;
+  }
+  const evalFor = c => (c === 'r' ? evaluate() : -evaluate());
+
+  function sortMoves(moves){
+    for(const m of moves){
+      const t = X.board[m.ty][m.tx];
+      m.w = t ? VAL[t.t] - VAL[X.board[m.fy][m.fx].t] / 10 : 0;
+    }
+    moves.sort((a, b) => b.w - a.w);
+  }
+
+  let nodes = 0, rootDepth = 1, deadline = 0, aborted = false;
+
+  function negamax(depth, alpha, beta, color){
+    nodes++;
+    if((nodes & 1023) === 0 && Date.now() > deadline) aborted = true;
+    if(depth <= 0 || aborted) return evalFor(color);
+    const moves = genMoves(color, true);
+    if(!moves.length) return -MATE + (rootDepth - depth);
+    sortMoves(moves);
+    let best = -INF;
+    for(const m of moves){
+      const cap = make(m);
+      const s = -negamax(depth - 1, -beta, -alpha, other(color));
+      unmake(m, cap);
+      if(s > best) best = s;
+      if(best > alpha) alpha = best;
+      if(alpha >= beta) break;
+      if(aborted) break;
+    }
+    return best;
+  }
+
+  function searchRoot(maxDepth, timeMs){
+    const me = X.turn;
+    const root = genMoves(me, true);
+    if(!root.length) return null;
+    sortMoves(root);
+    nodes = 0; aborted = false;
+    deadline = Date.now() + timeMs;
+    let best = root[0];
+    for(let d = 1; d <= maxDepth; d++){
+      rootDepth = d;
+      let alpha = -INF, local = null;
+      for(const m of root){
+        const cap = make(m);
+        let s = -negamax(d - 1, -INF, -alpha, other(me));
+        unmake(m, cap);
+        if(X.level === 'easy') s += (Math.random() - 0.5) * 120;
+        if(!local || s > alpha){ alpha = s; local = m; }
+      }
+      if(local && !aborted){
+        best = local;
+        // 上一轮最佳走法提到最前，提升下一层剪枝效率
+        root.splice(root.indexOf(local), 1);
+        root.unshift(local);
+      }
+      if(aborted || alpha > MATE / 2 || Date.now() > deadline) break;
+    }
+    return best;
+  }
+
+  function aiTurn(){
+    if(X.over) return;
+    const depth = X.level === 'easy' ? 1 : (X.level === 'normal' ? 2 : 3);
+    const limit = X.level === 'easy' ? 400 : (X.level === 'normal' ? 1200 : 2600);
+    const m = searchRoot(depth, limit);
+    if(!m){ finish(other(X.turn)); return; }
+    doMove(m);
+  }
+
+  /* ---------- 执行走子 ---------- */
+  function doMove(m){
+    const p = X.board[m.fy][m.fx];
+    const cap = make(m);
+    const color = p.c;
+    X.history.push({m, cap, color, text: moveText(m, p), piece: p});
+    X.log.push(moveText(m, p));
+    if(cap) X.caps[cap.c].push(cap);
+    X.last = {fx: m.fx, fy: m.fy, tx: m.tx, ty: m.ty};
+    X.sel = null; X.moves = [];
+    window.BEEP(cap ? 180 : 300, cap ? 0.16 : 0.1);
+
+    const opp = other(color);
+    X.check = isChecked(opp);
+    if(X.check) window.BEEP(520, 0.18, 'square');
+    if(!genMoves(opp, true).length){ finish(color); draw(); return; }
+
+    X.turn = opp;
+    sync(); draw();
+
+    if(!X.over && X.mode === 'pve' && X.turn !== X.human){
+      X.thinking = true; sync();
+      setTimeout(() => { aiTurn(); X.thinking = false; sync(); draw(); }, 260);
+    }
+  }
+
+  function finish(color){
+    X.over = true;
+    const el = document.getElementById('resXQ');
+    const who = color === 'r' ? '红 方 胜 利' : '黑 方 胜 利';
+    const by = X.check ? '将死对方主帅' : '对方无子可走（困毙）';
+    const extra = X.mode === 'pve'
+      ? (color === X.human ? '恭喜，你赢了' : '电脑获胜，再来一局')
+      : by;
+    el.innerHTML = who + '<small>' + extra + '</small>';
+    document.getElementById('ovXQ').classList.add('show');
+    sync();
+  }
+
+  /* ---------- 棋谱 ---------- */
+  function moveText(m, p){
+    const c = p.c, name = NAME[c][p.t];
+    const fileNo = x => c === 'r' ? CN[8 - x] : AR[x];
+    const nums = c === 'r' ? CN : AR;
+    let act, num;
+    if(m.ty === m.fy){
+      act = '平'; num = fileNo(m.tx);
+    } else {
+      const forward = c === 'r' ? (m.ty < m.fy) : (m.ty > m.fy);
+      act = forward ? '进' : '退';
+      if(p.t === 'N' || p.t === 'B' || p.t === 'A') num = fileNo(m.tx);
+      else num = nums[Math.abs(m.ty - m.fy) - 1];
+    }
+    return name + fileNo(m.fx) + act + num;
+  }
+  function renderLog(){
+    const el = document.getElementById('xLog');
+    el.innerHTML = X.log.map((t, i) =>
+      '<div><span class="no">' + (i + 1) + '.</span><span>' + t + '</span></div>'
+    ).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+  function renderCaps(){
+    for(const c of ['r', 'b']){
+      document.getElementById(c === 'r' ? 'xCapR' : 'xCapB').innerHTML =
+        X.caps[c].map(p => '<span class="chip ' + (p.c === 'r' ? 'r' : 'k') + '">' + NAME[p.c][p.t] + '</span>').join('');
+    }
+  }
+
+  /* ---------- 绘制 ---------- */
+  function draw(){
+    const g = ctx.createLinearGradient(0, 0, CW, CH);
+    g.addColorStop(0, '#f8e2b6'); g.addColorStop(.5, '#edcb92'); g.addColorStop(1, '#e0b878');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
+
+    ctx.strokeStyle = 'rgba(92,58,24,.75)'; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let y = 0; y < H; y++){
+      ctx.moveTo(px(0), py(y)); ctx.lineTo(px(W - 1), py(y));
+    }
+    for(let x = 0; x < W; x++){
+      if(x === 0 || x === W - 1){ ctx.moveTo(px(x), py(0)); ctx.lineTo(px(x), py(H - 1)); }
+      else{
+        ctx.moveTo(px(x), py(0)); ctx.lineTo(px(x), py(4));
+        ctx.moveTo(px(x), py(5)); ctx.lineTo(px(x), py(9));
+      }
+    }
+    ctx.stroke();
+
+    // 外框
+    ctx.strokeStyle = 'rgba(92,58,24,.9)'; ctx.lineWidth = 2;
+    ctx.strokeRect(px(0), py(0), CELL * (W - 1), CELL * (H - 1));
+
+    // 九宫斜线
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(92,58,24,.75)';
+    ctx.beginPath();
+    ctx.moveTo(px(3), py(0)); ctx.lineTo(px(5), py(2));
+    ctx.moveTo(px(5), py(0)); ctx.lineTo(px(3), py(2));
+    ctx.moveTo(px(3), py(7)); ctx.lineTo(px(5), py(9));
+    ctx.moveTo(px(5), py(7)); ctx.lineTo(px(3), py(9));
+    ctx.stroke();
+
+    // 河界文字
+    ctx.fillStyle = 'rgba(120,78,32,.5)';
+    ctx.font = '600 22px "KaiTi","STKaiti",serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const midY = (py(4) + py(5)) / 2;
+    ctx.fillText('楚  河', px(2), midY);
+    ctx.fillText('漢  界', px(6), midY);
+
+    // 炮位 / 兵位标记
+    ctx.strokeStyle = 'rgba(92,58,24,.6)'; ctx.lineWidth = 1.4;
+    for(const [x, y] of [[1,2],[7,2],[1,7],[7,7],
+                         [0,3],[2,3],[4,3],[6,3],[8,3],
+                         [0,6],[2,6],[4,6],[6,6],[8,6]]) mark(x, y);
+
+    // 上一手
+    if(X.last){
+      ctx.strokeStyle = 'rgba(200,140,40,.9)'; ctx.lineWidth = 2.4;
+      box(X.last.fx, X.last.fy, PR + 3);
+      ctx.strokeStyle = 'rgba(200,60,40,.95)'; ctx.lineWidth = 2.4;
+      box(X.last.tx, X.last.ty, PR + 3);
+    }
+
+    // 选中框
+    if(X.sel){
+      ctx.strokeStyle = 'rgba(60,140,220,.95)'; ctx.lineWidth = 2.6;
+      box(X.sel.x, X.sel.y, PR + 4);
+    }
+
+    // 可走点
+    for(const m of X.moves){
+      const cx = px(m.tx), cy = py(m.ty);
+      if(X.board[m.ty][m.tx]){
+        ctx.strokeStyle = 'rgba(200,50,40,.9)'; ctx.lineWidth = 2.4;
+        ctx.beginPath(); ctx.arc(cx, cy, PR + 2, 0, Math.PI * 2); ctx.stroke();
+      } else {
+        ctx.fillStyle = 'rgba(60,140,220,.55)';
+        ctx.beginPath(); ctx.arc(cx, cy, 7, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // 棋子
+    for(let y = 0; y < H; y++) for(let x = 0; x < W; x++){
+      const p = X.board[y][x];
+      if(p) piece(x, y, p);
+    }
+
+    // 将军提示
+    if(X.check && !X.over){
+      const k = findKing(X.turn);
+      if(k){
+        ctx.strokeStyle = 'rgba(214,48,49,.95)'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(px(k.x), py(k.y), PR + 6, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+  }
+
+  function mark(x, y){
+    const cx = px(x), cy = py(y), O = 4, L = 7;
+    for(const [dx, dy] of ORTHO){
+      if(!inB(x + dx, y + dy)) continue;
+      ctx.beginPath();
+      ctx.moveTo(cx + dx * O, cy + dy * O);
+      ctx.lineTo(cx + dx * (O + L), cy + dy * (O + L));
+      ctx.stroke();
+    }
+  }
+  function box(x, y, r){
+    const cx = px(x), cy = py(y);
+    ctx.beginPath();
+    ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy - r);
+    ctx.lineTo(cx + r, cy + r); ctx.lineTo(cx - r, cy + r);
+    ctx.closePath(); ctx.stroke();
+  }
+  function piece(x, y, p){
+    const cx = px(x), cy = py(y);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, PR, 0, Math.PI * 2);
+    ctx.shadowColor = 'rgba(0,0,0,.32)'; ctx.shadowBlur = 5; ctx.shadowOffsetY = 2;
+    const g = ctx.createRadialGradient(cx - 8, cy - 9, 4, cx, cy, PR);
+    g.addColorStop(0, '#fffaf0'); g.addColorStop(.65, '#f0dcb8'); g.addColorStop(1, '#d8b585');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.restore();
+
+    ctx.beginPath(); ctx.arc(cx, cy, PR - 3.5, 0, Math.PI * 2);
+    ctx.strokeStyle = p.c === 'r' ? '#b3342a' : '#333';
+    ctx.lineWidth = 1.6; ctx.stroke();
+
+    ctx.fillStyle = p.c === 'r' ? '#c0392b' : '#232323';
+    ctx.font = '600 25px "KaiTi","STKaiti","Microsoft YaHei",serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(NAME[p.c][p.t], cx, cy + 1);
+  }
+
+  /* ---------- 界面同步 ---------- */
+  function sync(){
+    document.getElementById('xTurnDot').className = 'dot ' + (X.turn === 'r' ? 'r' : 'k');
+    const n = X.history.length + 1;
+    let main = X.turn === 'r' ? '红方走棋' : '黑方走棋';
+    let sub = '第 ' + n + ' 手';
+    if(X.thinking){ main = '电脑思考中'; sub = '深度 ' + (X.level === 'hard' ? 3 : X.level === 'normal' ? 2 : 1) + ' 层搜索…'; }
+    else if(X.over){ main = '本局结束'; sub = '共 ' + X.history.length + ' 手'; }
+    else if(X.mode === 'pve') sub += X.turn === X.human ? ' · 你的回合' : ' · 电脑回合';
+    if(X.check && !X.over) sub = '<b>将军！</b>' + sub;
+    document.getElementById('xTurnTxt').innerHTML = main + '<span>' + sub + '</span>';
+    document.getElementById('xUndo').disabled = X.history.length === 0 || X.thinking;
+    document.getElementById('xLevelGroup').style.display = X.mode === 'pve' ? '' : 'none';
+    document.getElementById('xSideGroup').style.display = X.mode === 'pve' ? '' : 'none';
+    document.getElementById('xTip').textContent = X.mode === 'pvp'
+      ? '红先黑后，两位玩家轮流走棋。'
+      : '你执' + (X.human === 'r' ? '红' : '黑') + '棋，电脑执' + (X.human === 'r' ? '黑' : '红') + '棋。';
+    renderLog(); renderCaps();
+  }
+
+  /* ---------- 交互 ---------- */
+  canvas.addEventListener('click', e => {
+    if(X.over || X.thinking) return;
+    if(X.mode === 'pve' && X.turn !== X.human) return;
+    const pos = toPos(e); if(!pos) return;
+    const [x, y] = pos;
+
+    if(X.sel){
+      const m = X.moves.find(mm => mm.tx === x && mm.ty === y);
+      if(m){ doMove(m); return; }
+    }
+    const p = X.board[y][x];
+    if(p && p.c === X.turn){
+      X.sel = {x, y};
+      X.moves = genMoves(X.turn, true).filter(mm => mm.fx === x && mm.fy === y);
+      draw();
+    } else if(X.sel){
+      X.sel = null; X.moves = []; draw();
+    }
+  });
+
+  function toPos(e){
+    const r = canvas.getBoundingClientRect();
+    const mx = (e.clientX - r.left) * (CW / r.width);
+    const my = (e.clientY - r.top) * (CH / r.height);
+    const x = Math.round((mx - M) / CELL), y = Math.round((my - M) / CELL);
+    if(!inB(x, y)) return null;
+    if(Math.hypot(mx - px(x), my - py(y)) > CELL * 0.5) return null;
+    return [x, y];
+  }
+
+  window.segBind('xModeSeg', v => { X.mode = v; reset(); });
+  window.segBind('xLevelSeg', v => { X.level = v; sync(); });
+  window.segBind('xSideSeg', v => { X.human = v; reset(); });
+  document.getElementById('xReset').addEventListener('click', () => reset());
+  document.getElementById('againXQ').addEventListener('click', () => reset());
+  document.getElementById('xUndo').addEventListener('click', () => {
+    if(!X.history.length || X.thinking) return;
+    const steps = (X.mode === 'pve' && X.history.length >= 2) ? 2 : 1;
+    for(let k = 0; k < steps; k++){
+      const h = X.history.pop();
+      if(!h) break;
+      unmake(h.m, h.cap);
+      X.log.pop();
+      if(h.cap) X.caps[h.cap.c].pop();
+      X.turn = h.color;
+    }
+    const prev = X.history[X.history.length - 1];
+    X.last = prev ? {fx: prev.m.fx, fy: prev.m.fy, tx: prev.m.tx, ty: prev.m.ty} : null;
+    X.over = false; X.check = false; X.sel = null; X.moves = [];
+    if(X.history.length) X.check = isChecked(X.turn);
+    document.getElementById('ovXQ').classList.remove('show');
+    sync(); draw();
+  });
+
+  window.addEventListener('resize', draw);
+
+  return {
+    enter(){
+      if(!X.ready){ reset(); X.ready = true; }
+      else { sync(); draw(); }
+    },
+    _debug: {X, genMoves, isChecked, doMove, reset, searchRoot, evaluate, make, unmake, findKing, moveText}
+  };
+})();
+
+</script>
+
+<script>
+/* =========================================================
+   中国跳棋（六角星 121 孔）· 支持 2 / 3 / 4 / 6 人
+   坐标：flat-top 六方网格 double-width 表示
+         row 0..16，col 0..24（同行相邻 col 差 2，斜向差 1）
+   ========================================================= */
+var CHECKERS = (function(){
+  "use strict";
+
+  const D = 30;                                  // 水平相邻孔间距
+  const HX = D / 2;
+  const HY = D * Math.sqrt(3) / 2;
+  const M = 26;
+  const CW = Math.round(24 * HX + 2 * M);        // 412
+  const CH = Math.round(16 * HY + 2 * M);        // 468
+  const DIRS = [[0,2],[0,-2],[-1,1],[-1,-1],[1,1],[1,-1]];
+  const Z_TOP = 0, Z_BOT = 1, Z_TL = 2, Z_TR = 3, Z_BL = 4, Z_BR = 5, Z_MID = -1;
+
+  // 六个角按顺时针成环，对角 = 环上 +3
+  const RING = [Z_TOP, Z_TR, Z_BR, Z_BOT, Z_BL, Z_TL];
+  const ZNAME = {};
+  ZNAME[Z_TOP] = '上'; ZNAME[Z_TR] = '右上'; ZNAME[Z_BR] = '右下';
+  ZNAME[Z_BOT] = '下'; ZNAME[Z_BL] = '左下'; ZNAME[Z_TL] = '左上';
+  // 各人数占用的环上位置
+  const SEAT_CFG = {2: [0,3], 3: [0,2,4], 4: [1,2,4,5], 6: [0,1,2,3,4,5]};
+
+  // 六种棋子颜色
+  const COLORS = [null,
+    {n:'红', a:'#ff9c8c', b:'#d0402f', c:'#8e2418', z:'rgba(192,57,43,.14)'},
+    {n:'蓝', a:'#a8ccff', b:'#3168c4', c:'#173f80', z:'rgba(41,93,176,.14)'},
+    {n:'绿', a:'#9fdcb6', b:'#2e8b57', c:'#186b40', z:'rgba(46,139,87,.14)'},
+    {n:'橙', a:'#ffc98a', b:'#e08e0b', c:'#93460a', z:'rgba(224,142,11,.15)'},
+    {n:'紫', a:'#d9b3ee', b:'#8e44ad', c:'#5b2d75', z:'rgba(142,68,173,.14)'},
+    {n:'青', a:'#9be3e3', b:'#0e8f8f', c:'#065c5c', z:'rgba(14,143,143,.14)'}
+  ];
+
+  const canvas = document.getElementById('cCheckers');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = CW * dpr; canvas.height = CH * dpr;
+  canvas.style.width = CW + 'px'; canvas.style.height = CH + 'px';
+  ctx.scale(dpr, dpr);
+
+  /* ---------- 棋盘生成 ---------- */
+  const cells = [];
+  const index = new Map();
+  const hexMin = {4:8, 5:7, 6:6, 7:5, 8:4, 9:5, 10:6, 11:7, 12:8};
+  const hexMax = {4:16, 5:17, 6:18, 7:19, 8:20, 9:19, 10:18, 11:17, 12:16};
+
+  (function build(){
+    for(let row = 0; row <= 16; row++){
+      const cols = [];
+      if(row <= 3 || row >= 13){
+        const n = row <= 3 ? row + 1 : 17 - row;
+        for(let i = 0; i < n; i++) cols.push(12 - (n - 1) + 2 * i);
+      } else {
+        const mn = hexMin[row], mx = hexMax[row];
+        for(let c = mn; c <= mx; c += 2) cols.push(c);
+        if(row <= 7){
+          const n = 8 - row;
+          for(let i = 0; i < n; i++) cols.push(mn - 2 - 2 * i);
+          for(let i = 0; i < n; i++) cols.push(mx + 2 + 2 * i);
+        } else if(row >= 9){
+          const n = row - 8;
+          for(let i = 0; i < n; i++) cols.push(mn - 2 - 2 * i);
+          for(let i = 0; i < n; i++) cols.push(mx + 2 + 2 * i);
+        }
+      }
+      for(const c of cols){
+        let zone = Z_MID;
+        if(row <= 3) zone = Z_TOP;
+        else if(row >= 13) zone = Z_BOT;
+        else if(c < hexMin[row]) zone = (row <= 7 ? Z_TL : Z_BL);
+        else if(c > hexMax[row]) zone = (row <= 7 ? Z_TR : Z_BR);
+        index.set(row + ',' + c, cells.length);
+        cells.push({row, col: c, zone});
+      }
+    }
+  })();
+
+  const N = cells.length;                        // 121
+  const nbr = cells.map(({row, col}) =>
+    DIRS.map(([dr, dc]) => {
+      const k = index.get((row + dr) + ',' + (col + dc));
+      return k === undefined ? -1 : k;
+    })
+  );
+  const zoneOf = i => cells[i].zone;
+  const zoneCells = z => cells.reduce((a, c, i) => (c.zone === z && a.push(i), a), []);
+
+  function hexDist(a, b){
+    const A = cells[a], B = cells[b];
+    const aq = (A.col - A.row) / 2, ar = A.row;
+    const bq = (B.col - B.row) / 2, br = B.row;
+    const dq = aq - bq, dr = ar - br;
+    return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
+  }
+
+  /* ---------- 状态 ---------- */
+  const C = {
+    board: new Array(N).fill(0),
+    seats: [], n: 2, turnIdx: 0, level: 'normal',
+    sel: null, moves: [], history: [],
+    over: false, thinking: false, last: null, ready: false
+  };
+  const seat = () => C.seats[C.turnIdx];
+  const pid = () => seat().pid;
+  const homePts = p => zoneCells(seatOf(p).zone);
+  const goalPts = p => zoneCells(seatOf(p).goal);
+  const seatOf = p => C.seats.find(s => s.pid === p);
+
+  function buildSeats(n){
+    const pos = SEAT_CFG[n];
+    const prev = C.seats.map(s => s.type);
+    C.seats = pos.map((rp, i) => ({
+      pid: i + 1,
+      zone: RING[rp],
+      goal: RING[(rp + 3) % 6],
+      type: prev[i] !== undefined ? prev[i] : (i === 0 ? 'human' : 'ai')
+    }));
+    if(C.seats.every(s => s.type === 'ai')) C.seats[0].type = 'human';   // 至少保留一位玩家
+  }
+
+  function reset(){
+    buildSeats(C.n);
+    C.board = new Array(N).fill(0);
+    for(const s of C.seats) for(const i of zoneCells(s.zone)) C.board[i] = s.pid;
+    C.turnIdx = 0; C.sel = null; C.moves = [];
+    C.history = []; C.over = false; C.thinking = false; C.last = null;
+    document.getElementById('ovCK').classList.remove('show');
+    sync(); draw(); maybeAI();
+  }
+
+  /* ---------- 走法：单步 + 连续跳跃 ---------- */
+  function movesFrom(from){
+    const out = new Set();
+    for(let d = 0; d < 6; d++){
+      const n = nbr[from][d];
+      if(n >= 0 && C.board[n] === 0) out.add(n);
+    }
+    const seen = new Set([from]);
+    const queue = [from];
+    while(queue.length){
+      const cur = queue.shift();
+      for(let d = 0; d < 6; d++){
+        const mid = nbr[cur][d];
+        if(mid < 0 || C.board[mid] === 0) continue;
+        const dst = nbr[mid][d];
+        if(dst < 0 || C.board[dst] !== 0) continue;
+        if(seen.has(dst)) continue;
+        seen.add(dst); out.add(dst); queue.push(dst);
+      }
+    }
+    return out;
+  }
+
+  function allMoves(color){
+    const list = [];
+    for(let i = 0; i < N; i++){
+      if(C.board[i] !== color) continue;
+      for(const t of movesFrom(i)) list.push({from: i, to: t});
+    }
+    return list;
+  }
+
+  /* ---------- 走子 ---------- */
+  function nextTurn(){ C.turnIdx = (C.turnIdx + 1) % C.seats.length; }
+
+  function doMove(m){
+    const color = C.board[m.from];
+    C.board[m.to] = color;
+    C.board[m.from] = 0;
+    C.history.push({from: m.from, to: m.to, pid: color});
+    C.last = {from: m.from, to: m.to};
+    C.sel = null; C.moves = [];
+    window.BEEP(320, 0.09);
+
+    if(inGoal(color) === 10){ finish(color); draw(); return; }
+    nextTurn();
+    sync(); draw();
+    maybeAI();
+  }
+
+  function maybeAI(){
+    if(C.over) return;
+    const s = seat();
+    if(!s || s.type !== 'ai') return;
+    C.thinking = true; sync();
+    setTimeout(() => {
+      aiTurn();
+      C.thinking = false;
+      sync(); draw();
+    }, 300);
+  }
+
+  function inGoal(p){
+    const g = seatOf(p).goal;
+    let n = 0;
+    for(let i = 0; i < N; i++) if(C.board[i] === p && zoneOf(i) === g) n++;
+    return n;
+  }
+
+  function finish(p){
+    C.over = true;
+    const el = document.getElementById('resCK');
+    const col = COLORS[p];
+    const humanWon = seatOf(p).type === 'human';
+    const others = C.seats.filter(s => s.type === 'human').length;
+    let extra;
+    if(others === 0) extra = '十子全部入位';
+    else extra = humanWon ? '恭喜，你赢了' : '电脑获胜，再来一局';
+    el.innerHTML = col.n + ' 方 胜 利<small>' + extra + '</small>';
+    document.getElementById('ovCK').classList.add('show');
+    sync();
+  }
+
+  /* ---------- 电脑 AI ---------- */
+  function evalFor(p){
+    const goal = seatOf(p).goal, pts = zoneCells(goal);
+    const dists = [];
+    for(let i = 0; i < N; i++){
+      if(C.board[i] !== p) continue;
+      if(zoneOf(i) === goal){ dists.push(-8); continue; }
+      let best = Infinity;
+      for(const t of pts){
+        if(C.board[t] === p) continue;
+        const d = hexDist(i, t);
+        if(d < best) best = d;
+      }
+      if(best === Infinity) best = 0;
+      dists.push(best);
+    }
+    let sum = 0;
+    for(const d of dists) sum += d;
+    dists.sort((a, b) => b - a);
+    const lag = (dists[0] || 0) * 0.8 + (dists[1] || 0) * 0.5 + (dists[2] || 0) * 0.3;
+    return sum + lag;
+  }
+
+  function aiTurn(){
+    if(C.over) return;
+    const p = pid();
+    const list = allMoves(p);
+    if(!list.length){ nextTurn(); return; }
+    const noise = C.level === 'easy' ? 3.2 : (C.level === 'normal' ? 0.9 : 0);
+    let best = null, bestScore = Infinity;
+    for(const m of list){
+      C.board[m.to] = p; C.board[m.from] = 0;
+      let s = evalFor(p);
+      C.board[m.from] = p; C.board[m.to] = 0;
+      s += Math.random() * noise;
+      if(s < bestScore){ bestScore = s; best = m; }
+    }
+    if(C.level === 'easy' && list.length > 3 && Math.random() < 0.25){
+      best = list[Math.floor(Math.random() * list.length)];
+    }
+    doMove(best);
+  }
+
+  /* ---------- 绘制 ---------- */
+  const px = i => M + cells[i].col * HX;
+  const py = i => M + cells[i].row * HY;
+
+  function draw(){
+    const g = ctx.createLinearGradient(0, 0, CW, CH);
+    g.addColorStop(0, '#fbf7f0'); g.addColorStop(1, '#efe7da');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
+
+    // 星形轮廓（12 顶点顺时针：6 外尖 + 6 内凹）
+    ctx.beginPath();
+    const outline = [[0,12],[4,16],[4,24],[8,20],[12,24],[12,16],[16,12],[12,8],[12,0],[8,4],[4,0],[4,8]];
+    outline.forEach(([r, c], k) => {
+      const x = M + c * HX, y = M + r * HY;
+      k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(120,95,60,.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // 各阵营起始区底色
+    for(const s of C.seats){
+      ctx.fillStyle = COLORS[s.pid].z;
+      for(const i of zoneCells(s.zone)){
+        ctx.beginPath(); ctx.arc(px(i), py(i), 13, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // 未使用的角区（多为 3 人局的目标区）用中性色
+    const usedZones = new Set(C.seats.map(s => s.zone));
+    for(const z of [Z_TOP, Z_TR, Z_BR, Z_BOT, Z_BL, Z_TL]){
+      if(usedZones.has(z)) continue;
+      ctx.fillStyle = 'rgba(150,135,100,.08)';
+      for(const i of zoneCells(z)){
+        ctx.beginPath(); ctx.arc(px(i), py(i), 13, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // 当前方的目标区：虚线圆环提示
+    if(!C.over){
+      const cur = seat();
+      if(cur){
+        ctx.save();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = COLORS[cur.pid].b;
+        ctx.globalAlpha = 0.55; ctx.lineWidth = 1.6;
+        for(const i of zoneCells(cur.goal)){
+          ctx.beginPath(); ctx.arc(px(i), py(i), 9.5, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
+      }
+    }
+
+    // 可落点
+    for(const t of C.moves){
+      ctx.fillStyle = 'rgba(46,160,90,.30)';
+      ctx.beginPath(); ctx.arc(px(t), py(t), 12, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(30,140,80,.85)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(px(t), py(t), 12, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    // 孔位
+    for(let i = 0; i < N; i++){
+      ctx.fillStyle = 'rgba(110,90,62,.55)';
+      ctx.beginPath(); ctx.arc(px(i), py(i), 3.4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // 上一手
+    if(C.last){
+      ctx.strokeStyle = 'rgba(200,140,40,.95)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px(C.last.from), py(C.last.from), 12, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(200,60,40,.95)'; ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.arc(px(C.last.to), py(C.last.to), 12, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    // 棋子
+    for(let i = 0; i < N; i++) if(C.board[i]) stone(i, C.board[i]);
+
+    // 选中环
+    if(C.sel !== null){
+      ctx.strokeStyle = 'rgba(240,180,40,.95)'; ctx.lineWidth = 2.6;
+      ctx.beginPath(); ctx.arc(px(C.sel), py(C.sel), 14, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  function stone(i, p){
+    const x = px(i), y = py(i), r = 11.5, col = COLORS[p];
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
+    const g = ctx.createRadialGradient(x - r * .34, y - r * .38, r * .12, x, y, r);
+    g.addColorStop(0, col.a); g.addColorStop(.55, col.b); g.addColorStop(1, col.c);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.beginPath(); ctx.arc(x - r * .3, y - r * .34, r * .22, 0, Math.PI * 2); ctx.fill();
+  }
+
+  /* ---------- 界面同步 ---------- */
+  function renderSeats(){
+    document.getElementById('kSeats').innerHTML = C.seats.map((s, i) => {
+      const col = COLORS[s.pid];
+      return '<div class="seat' + (i === C.turnIdx ? ' cur' : '') + '" data-seat="' + i + '">'
+        + '<span class="sw" style="background:' + col.b + '"></span>'
+        + '<span class="nm">' + col.n + ' · ' + ZNAME[s.zone] + '→' + ZNAME[s.goal] + '</span>'
+        + '<span class="ty' + (s.type === 'human' ? ' me' : '') + '">'
+        + (s.type === 'human' ? '玩家' : '电脑') + '</span></div>';
+    }).join('');
+  }
+  function renderProg(){
+    document.getElementById('kProg').innerHTML = C.seats.map(s =>
+      '<div class="prog"><span class="sw" style="background:' + COLORS[s.pid].b + '"></span>'
+      + '<span class="nm">' + COLORS[s.pid].n + '方</span>'
+      + '<span class="v">' + inGoal(s.pid) + '/10</span></div>').join('');
+  }
+
+  function sync(){
+    const cur = seat();
+    const dot = document.getElementById('kTurnDot');
+    dot.className = 'dot';
+    dot.style.background = 'radial-gradient(circle at 34% 32%,' + COLORS[cur.pid].a + ',' + COLORS[cur.pid].b + ')';
+    dot.style.borderColor = COLORS[cur.pid].b;
+    let main = COLORS[cur.pid].n + '方走棋';
+    let sub = '第 ' + (C.history.length + 1) + ' 手';
+    if(C.thinking){ main = '电脑思考中'; sub = COLORS[cur.pid].n + '方正在评估…'; }
+    else if(C.over){ main = '本局结束'; sub = '共 ' + C.history.length + ' 手'; }
+    else sub += cur.type === 'human' ? ' · 玩家回合' : ' · 电脑回合';
+    document.getElementById('kTurnTxt').innerHTML = main + '<span>' + sub + '</span>';
+    document.getElementById('kUndo').disabled = C.history.length === 0 || C.thinking;
+    renderSeats(); renderProg();
+    const humans = C.seats.filter(s => s.type === 'human').length;
+    document.getElementById('kTip').textContent = humans === 0
+      ? '全电脑对局，仅供观战。'
+      : (humans === 1 ? '点击己方棋子选中后走子；' : humans + ' 位玩家轮流在同一台设备上走子；')
+        + '点击右侧列表可切换座位为玩家或电脑。';
+  }
+
+  /* ---------- 交互 ---------- */
+  function toIdx(e){
+    const r = canvas.getBoundingClientRect();
+    const mx = (e.clientX - r.left) * (CW / r.width);
+    const my = (e.clientY - r.top) * (CH / r.height);
+    let best = -1, bd = 16;
+    for(let i = 0; i < N; i++){
+      const d = Math.hypot(mx - px(i), my - py(i));
+      if(d < bd){ bd = d; best = i; }
+    }
+    return best;
+  }
+
+  canvas.addEventListener('click', e => {
+    if(C.over || C.thinking) return;
+    if(seat().type !== 'human') return;
+    const i = toIdx(e);
+    if(i < 0) return;
+    if(C.sel !== null && C.moves.includes(i)){ doMove({from: C.sel, to: i}); return; }
+    if(C.board[i] === pid()){
+      C.sel = i;
+      C.moves = [...movesFrom(i)];
+      draw();
+    } else if(C.sel !== null){
+      C.sel = null; C.moves = []; draw();
+    }
+  });
+
+  document.getElementById('kSeats').addEventListener('click', e => {
+    const row = e.target.closest('.seat');
+    if(!row || C.thinking) return;
+    const i = +row.dataset.seat;
+    C.seats[i].type = C.seats[i].type === 'human' ? 'ai' : 'human';
+    if(C.seats.every(s => s.type === 'ai')) C.seats[0].type = 'human';   // 至少保留一位玩家
+    sync(); maybeAI();
+  });
+
+  window.segBind('kNumSeg', v => { C.n = +v; reset(); });
+  window.segBind('kLevelSeg', v => { C.level = v; sync(); });
+  document.getElementById('kReset').addEventListener('click', () => reset());
+  document.getElementById('againCK').addEventListener('click', () => reset());
+  document.getElementById('kUndo').addEventListener('click', () => {
+    if(!C.history.length || C.thinking) return;
+    // 回退到最近一个"玩家"可操作的局面
+    for(;;){
+      const h = C.history.pop();
+      if(!h) break;
+      C.board[h.from] = h.pid;
+      C.board[h.to] = 0;
+      C.turnIdx = C.seats.findIndex(s => s.pid === h.pid);
+      const prev = C.history[C.history.length - 1];
+      C.last = prev ? {from: prev.from, to: prev.to} : null;
+      if(!C.history.length || seat().type === 'human') break;
+    }
+    C.over = false; C.sel = null; C.moves = [];
+    document.getElementById('ovCK').classList.remove('show');
+    sync(); draw();
+  });
+
+  window.addEventListener('resize', draw);
+
+  return {
+    enter(){
+      if(!C.ready){ reset(); C.ready = true; }
+      else { sync(); draw(); }
+    },
+    _debug: {C, cells, nbr, N, movesFrom, allMoves, doMove, reset, evalFor, hexDist,
+             zoneOf, inGoal, aiTurn, zoneCells, RING, SEAT_CFG, COLORS, ZNAME, buildSeats, seatOf}
+  };
+})();
+</script>
+</body>
+</html>
